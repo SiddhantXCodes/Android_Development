@@ -1,157 +1,220 @@
 import 'package:flutter/material.dart';
-import 'dart:math';
+import 'package:math_expressions/math_expressions.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 void main() {
-  runApp(QuotesApp());
+  runApp(CalculatorApp());
 }
 
-class QuotesApp extends StatelessWidget {
+class CalculatorApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      title: '3D Calculator',
       debugShowCheckedModeBanner: false,
-      home: Scaffold(body: QuotesList()),
+      theme: ThemeData.dark().copyWith(
+        scaffoldBackgroundColor: const Color(0xFF0E1116),
+      ),
+      home: CalculatorPage(),
     );
   }
 }
 
-class QuotesList extends StatefulWidget {
+class CalculatorPage extends StatefulWidget {
   @override
-  _QuotesListState createState() => _QuotesListState();
+  _CalculatorPageState createState() => _CalculatorPageState();
 }
 
-class _QuotesListState extends State<QuotesList>
+class _CalculatorPageState extends State<CalculatorPage>
     with SingleTickerProviderStateMixin {
-  final List<Map<String, String>> quotes = [
-    {
-      "quote": "Believe you can and you're halfway there.",
-      "author": "Theodore Roosevelt",
-    },
-    {
-      "quote": "Push yourself, because no one else is going to do it for you.",
-      "author": "Unknown",
-    },
-    {
-      "quote": "Success doesn’t just find you. You have to go out and get it.",
-      "author": "Unknown",
-    },
-    {
-      "quote": "Great things never come from comfort zones.",
-      "author": "Anonymous",
-    },
-    {"quote": "Dream it. Wish it. Do it.", "author": "Unknown"},
-    {"quote": "Don’t stop until you’re proud.", "author": "Unknown"},
-    {
-      "quote":
-          "The harder you work for something, the greater you’ll feel when you achieve it.",
-      "author": "Unknown",
-    },
+  String input = '';
+  String output = '0';
+  final AudioPlayer _audioPlayer = AudioPlayer();
+
+  final List<String> buttons = [
+    'C',
+    '⌫',
+    '%',
+    '/',
+    '7',
+    '8',
+    '9',
+    '*',
+    '4',
+    '5',
+    '6',
+    '-',
+    '1',
+    '2',
+    '3',
+    '+',
+    '00',
+    '0',
+    '.',
+    '=',
   ];
 
-  int currentIndex = 0;
-  late AnimationController _controller;
-  late Animation<double> _fadeAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 100),
-    );
-
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-
-    _controller.forward();
+  void playClickSound() async {
+    // Optional: Add your own click.mp3 file inside assets/sounds/
+    // and declare in pubspec.yaml
+    await _audioPlayer.play(AssetSource('sounds/click.mp3'));
   }
 
-  void nextQuote() {
+  void buttonPressed(String text) {
+    playClickSound();
     setState(() {
-      currentIndex = Random().nextInt(quotes.length);
-      _controller.reset();
-      _controller.forward();
+      if (text == 'C') {
+        input = '';
+        output = '0';
+      } else if (text == '⌫') {
+        if (input.isNotEmpty) input = input.substring(0, input.length - 1);
+      } else if (text == '=') {
+        _evaluate();
+      } else {
+        input += text;
+      }
     });
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
+  void _evaluate() {
+    try {
+      Parser p = Parser();
+      Expression exp = p.parse(input);
+      ContextModel cm = ContextModel();
+      double result = exp.evaluate(EvaluationType.REAL, cm);
+      output = result.toString();
+    } catch (e) {
+      output = 'Error';
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final currentQuote = quotes[currentIndex];
-
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF141E30), Color(0xFF243B55)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          title: const Text(
-            'Motivational Quotes',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-          centerTitle: true,
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-        ),
-        body: FadeTransition(
-          opacity: _fadeAnimation,
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Display section
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '"${currentQuote['quote']}"',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontStyle: FontStyle.italic,
-                      height: 1.5,
-                    ),
+                    input,
+                    style: const TextStyle(fontSize: 36, color: Colors.white70),
                   ),
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 10),
                   Text(
-                    "- ${currentQuote['author']}",
+                    output,
                     style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-                  ElevatedButton(
-                    onPressed: nextQuote,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color.fromARGB(255, 92, 160, 189),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 40,
-                        vertical: 15,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      "Next Quote",
-                      style: TextStyle(fontSize: 18, color: Colors.white),
+                      fontSize: 48,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
                   ),
                 ],
+              ),
+            ),
+
+            // Buttons at the bottom
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF1C1F26), Color(0xFF0E1116)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  topRight: Radius.circular(24),
+                ),
+              ),
+              child: GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: buttons.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 4,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                ),
+                itemBuilder: (context, index) {
+                  final button = buttons[index];
+                  return PressableButton(
+                    text: button,
+                    onPressed: () => buttonPressed(button),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class PressableButton extends StatefulWidget {
+  final String text;
+  final VoidCallback onPressed;
+
+  const PressableButton({required this.text, required this.onPressed});
+
+  @override
+  State<PressableButton> createState() => _PressableButtonState();
+}
+
+class _PressableButtonState extends State<PressableButton> {
+  bool _isPressed = false;
+
+  bool isOperator(String x) =>
+      (x == '/' || x == '*' || x == '-' || x == '+' || x == '=' || x == '%');
+
+  @override
+  Widget build(BuildContext context) {
+    final bool operator = isOperator(widget.text);
+    final Color color = operator
+        ? const Color(0xFF00C4FF)
+        : const Color(0xFF1F2937);
+
+    return Listener(
+      onPointerDown: (_) => setState(() => _isPressed = true),
+      onPointerUp: (_) {
+        setState(() => _isPressed = false);
+        widget.onPressed();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 100),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: _isPressed
+              ? []
+              : [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.5),
+                    offset: const Offset(4, 4),
+                    blurRadius: 8,
+                  ),
+                  BoxShadow(
+                    color: Colors.white.withOpacity(0.05),
+                    offset: const Offset(-4, -4),
+                    blurRadius: 8,
+                  ),
+                ],
+        ),
+        child: Transform.translate(
+          offset: _isPressed ? const Offset(2, 2) : Offset.zero,
+          child: Center(
+            child: Text(
+              widget.text,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w600,
+                color: operator ? Colors.white : Colors.white70,
               ),
             ),
           ),
